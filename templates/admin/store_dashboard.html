@@ -1,0 +1,107 @@
+{% extends "admin/index.html" %}
+
+{% block coltype %}colM{% endblock %}
+{% block sidebar %}{% endblock %}
+{% block content_title %}{% endblock %}
+
+{% block content %}
+<section class="store-dashboard" aria-labelledby="store-dashboard-title">
+    <div class="store-dashboard-heading">
+        <div>
+            <p class="store-dashboard-eyebrow">NOWHENCE CLOTHINGS · STORE MANAGEMENT</p>
+            <h1 id="store-dashboard-title">Good to see you, {{ user.get_short_name|default:user.username }}</h1>
+            <p>Choose a task to manage products, orders, and your storefront.</p>
+        </div>
+        <a class="store-dashboard-visit" href="/" target="_blank" rel="noopener">View storefront <span aria-hidden="true">↗</span></a>
+    </div>
+
+    <div class="store-dashboard-grid">
+        {% if perms.store.view_showcaseproduct or perms.store.add_showcaseproduct %}
+        <article class="store-dashboard-card store-dashboard-card--primary">
+            <span class="store-dashboard-icon" aria-hidden="true">01</span>
+            <h2>Products &amp; inventory</h2>
+            <p>Add T-shirts, update pricing, and manage stock by size and color.</p>
+            <div class="store-dashboard-actions">
+                {% if perms.store.add_showcaseproduct %}<a class="store-dashboard-button" href="{% url 'admin:store_showcaseproduct_add' %}">Add a product <span aria-hidden="true">+</span></a>{% endif %}
+                {% if perms.store.view_showcaseproduct %}<a class="store-dashboard-link" href="{% url 'admin:store_showcaseproduct_changelist' %}">View products <span aria-hidden="true">→</span></a>{% endif %}
+            </div>
+        </article>
+        {% endif %}
+
+        {% if perms.store.view_order %}
+        <article class="store-dashboard-card">
+            <span class="store-dashboard-icon" aria-hidden="true">02</span>
+            <h2>Orders</h2>
+            <p>Review purchases, update order and payment status, and add delivery tracking.</p>
+            <div class="store-dashboard-actions">
+                <a class="store-dashboard-button" href="{% url 'admin:store_order_changelist' %}">Manage orders <span aria-hidden="true">→</span></a>
+            </div>
+        </article>
+        {% endif %}
+
+        {% if perms.store.view_returnexchange %}
+        <article class="store-dashboard-card">
+            <span class="store-dashboard-icon" aria-hidden="true">03</span>
+            <h2>Returns &amp; exchanges</h2>
+            <p>Review customer requests and keep each case moving.</p>
+            <div class="store-dashboard-actions">
+                <a class="store-dashboard-button" href="{% url 'admin:store_returnexchange_changelist' %}">Review requests <span aria-hidden="true">→</span></a>
+            </div>
+        </article>
+        {% endif %}
+
+        {% if perms.store.view_contactmessage or perms.store.view_review %}
+        <article class="store-dashboard-card">
+            <span class="store-dashboard-icon" aria-hidden="true">04</span>
+            <h2>Customer care</h2>
+            <p>Respond to messages and review customer feedback.</p>
+            <div class="store-dashboard-actions">
+                {% if perms.store.view_contactmessage %}<a class="store-dashboard-button" href="{% url 'admin:store_contactmessage_changelist' %}">Messages <span aria-hidden="true">→</span></a>{% endif %}
+                {% if perms.store.view_review %}<a class="store-dashboard-link" href="{% url 'admin:store_review_changelist' %}">Product reviews <span aria-hidden="true">→</span></a>{% endif %}
+            </div>
+        </article>
+        {% endif %}
+
+        {% if perms.store.view_coupon or perms.store.view_featuredcollection %}
+        <article class="store-dashboard-card">
+            <span class="store-dashboard-icon" aria-hidden="true">05</span>
+            <h2>Promotions</h2>
+            <p>Manage discount codes and products featured in the shop.</p>
+            <div class="store-dashboard-actions">
+                {% if perms.store.view_coupon %}<a class="store-dashboard-button" href="{% url 'admin:store_coupon_changelist' %}">Discount codes <span aria-hidden="true">→</span></a>{% endif %}
+                {% if perms.store.view_featuredcollection %}<a class="store-dashboard-link" href="{% url 'admin:store_featuredcollection_changelist' %}">Featured products <span aria-hidden="true">→</span></a>{% endif %}
+            </div>
+        </article>
+        {% endif %}
+
+        {% if perms.store.view_herosection or perms.store.view_shopbanner or perms.store.view_aboutpage or perms.store.view_contactinfo %}
+        <article class="store-dashboard-card">
+            <span class="store-dashboard-icon" aria-hidden="true">06</span>
+            <h2>Storefront &amp; settings</h2>
+            <p>Keep your store presentation and customer-facing information current.</p>
+            <div class="store-dashboard-actions">
+                {% if perms.store.view_herosection %}<a class="store-dashboard-link" href="{% url 'admin:store_herosection_changelist' %}">Homepage hero</a>{% endif %}
+                {% if perms.store.view_shopbanner %}<a class="store-dashboard-link" href="{% url 'admin:store_shopbanner_changelist' %}">Shop banner</a>{% endif %}
+                {% if perms.store.view_aboutpage %}<a class="store-dashboard-link" href="{% url 'admin:store_aboutpage_changelist' %}">About page</a>{% endif %}
+                {% if perms.store.view_contactinfo %}<a class="store-dashboard-link" href="{% url 'admin:store_contactinfo_changelist' %}">Contact details</a>{% endif %}
+            </div>
+        </article>
+        {% endif %}
+    </div>
+
+    <details class="store-dashboard-more">
+        <summary>More store tools <span>Manage delivery coverage, customer accounts, and additional page content.</span></summary>
+        <div class="store-dashboard-more-links">
+            {% if perms.store.view_pincodeavailability %}<a href="{% url 'admin:store_pincodeavailability_changelist' %}">Delivery coverage</a>{% endif %}
+            {% if perms.store.view_address %}<a href="{% url 'admin:store_address_changelist' %}">Saved addresses</a>{% endif %}
+            {% if perms.store.view_userprofile %}<a href="{% url 'admin:store_userprofile_changelist' %}">Customer profiles</a>{% endif %}
+            {% if perms.store.view_wishlist %}<a href="{% url 'admin:store_wishlist_changelist' %}">Wishlists</a>{% endif %}
+            {% if perms.store.view_collectioncard %}<a href="{% url 'admin:store_collectioncard_changelist' %}">Collection cards</a>{% endif %}
+            {% if perms.store.view_parallaxsection %}<a href="{% url 'admin:store_parallaxsection_changelist' %}">Homepage feature section</a>{% endif %}
+            {% if perms.store.view_statitem %}<a href="{% url 'admin:store_statitem_changelist' %}">Homepage statistics</a>{% endif %}
+            {% if perms.auth.view_user %}<a href="{% url 'admin:auth_user_changelist' %}">Staff accounts</a>{% endif %}
+            {% if perms.auth.view_group %}<a href="{% url 'admin:auth_group_changelist' %}">Permissions &amp; groups</a>{% endif %}
+        </div>
+    </details>
+</section>
+{% endblock %}

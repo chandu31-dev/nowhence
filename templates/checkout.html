@@ -1,0 +1,1516 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout — Nowhence Clothings</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'images/favicon.svg' %}">
+    <link rel="stylesheet" href="{% static 'css/main.css' %}?v=12">
+    <link rel="stylesheet" href="{% static 'css/checkout.css' %}?v=5">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Razorpay Checkout SDK -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    {{ saved_addresses|json_script:"saved-addresses-data" }}
+    {{ request.user.is_authenticated|json_script:"checkout-auth-data" }}
+    <script>
+        // Restore theme before paint
+        (function(){
+            var t = localStorage.getItem('theme');
+            if (t === 'dark') document.documentElement.setAttribute('data-theme','dark');
+        })();
+    </script>
+</head>
+<body class="page-fade-in">
+    <canvas id="cursor-canvas"></canvas>
+
+    <!-- ─── Checkout Container ─── -->
+    <div class="checkout-page">
+        <!-- Header bar -->
+        <div class="checkout-header">
+            <a href="/" class="checkout-logo">
+                <i class="fas fa-arrow-left"></i>
+                <span>Nowhence Clothings</span>
+            </a>
+            <div class="checkout-secure">
+                <i class="fas fa-shield-alt"></i>
+                <span>Secure Checkout</span>
+            </div>
+        </div>
+
+        <!-- Progress Steps -->
+        <div class="checkout-progress">
+            <div class="progress-step active" data-step="1">
+                <div class="step-circle"><span>1</span></div>
+                <span class="step-label">Account</span>
+            </div>
+            <div class="progress-line"><div class="progress-line-fill"></div></div>
+            <div class="progress-step" data-step="2">
+                <div class="step-circle"><span>2</span></div>
+                <span class="step-label">Shipping</span>
+            </div>
+            <div class="progress-line"><div class="progress-line-fill"></div></div>
+            <div class="progress-step" data-step="3">
+                <div class="step-circle"><span>3</span></div>
+                <span class="step-label">Review</span>
+            </div>
+            <div class="progress-line"><div class="progress-line-fill"></div></div>
+            <div class="progress-step" data-step="4">
+                <div class="step-circle"><span>4</span></div>
+                <span class="step-label">Payment</span>
+            </div>
+        </div>
+
+        <div class="checkout-layout">
+            <!-- ─── Left: Form Steps ─── -->
+            <div class="checkout-main">
+
+                <!-- STEP 1: Account / Login -->
+                <div class="checkout-step" id="step1">
+                    <div class="step-header">
+                        <div class="step-icon"><i class="fas fa-user"></i></div>
+                        <div>
+                            <h2>Account</h2>
+                            <p class="step-desc">Sign in or create an account to continue</p>
+                        </div>
+                    </div>
+
+                    <!-- Already logged in -->
+                    <div class="logged-in-card" id="loggedInCard" style="display:none;">
+                        <div class="logged-in-avatar"><i class="fas fa-user-check"></i></div>
+                        <div class="logged-in-info">
+                            <p class="logged-in-name" id="loggedInName"></p>
+                            <p class="logged-in-email" id="loggedInEmail"></p>
+                        </div>
+                        <button class="btn-continue" id="step1Continue">
+                            Continue to Shipping <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Login form -->
+                    <div class="checkout-login-card" id="loginCard">
+                        <div class="checkout-tabs">
+                            <button type="button" class="checkout-tab active" data-tab="login">Sign In</button>
+                            <button type="button" class="checkout-tab" data-tab="signup">Create Account</button>
+                        </div>
+
+                        <!-- Login Tab -->
+                        <form class="checkout-form" id="loginForm">
+                            <div class="form-row">
+                                <div class="input-group">
+                                    <label for="loginUser"><i class="fas fa-user"></i> Username</label>
+                                    <input type="text" id="loginUser" name="username" placeholder="Enter username" autocomplete="username">
+                                    <span class="input-error" id="err_login_username"></span>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="input-group">
+                                    <label for="loginPass"><i class="fas fa-lock"></i> Password</label>
+                                    <input type="password" id="loginPass" name="password" placeholder="Enter password" autocomplete="current-password">
+                                    <span class="input-error" id="err_login_password"></span>
+                                </div>
+                            </div>
+                            <span class="input-error" id="err_login_all" style="text-align:center;display:block;margin-bottom:10px;"></span>
+                            <button type="submit" class="btn-checkout-primary" id="loginBtn">
+                                <span>Sign In & Continue</span>
+                                <div class="btn-spinner" style="display:none;"><i class="fas fa-spinner fa-spin"></i></div>
+                            </button>
+                        </form>
+
+                        <!-- Signup Tab -->
+                        <form class="checkout-form" id="signupForm" style="display:none;">
+                            <div class="form-row form-row-2">
+                                <div class="input-group">
+                                    <label for="signupFirst"><i class="fas fa-user"></i> First Name</label>
+                                    <input type="text" id="signupFirst" name="first_name" placeholder="First name">
+                                </div>
+                                <div class="input-group">
+                                    <label for="signupLast">Last Name</label>
+                                    <input type="text" id="signupLast" name="last_name" placeholder="Last name">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="input-group">
+                                    <label for="signupUser"><i class="fas fa-at"></i> Username</label>
+                                    <input type="text" id="signupUser" name="username" placeholder="Choose a username" autocomplete="username">
+                                    <span class="input-error" id="err_signup_username"></span>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="input-group">
+                                    <label for="signupEmail"><i class="fas fa-envelope"></i> Email</label>
+                                    <input type="email" id="signupEmail" name="email" placeholder="your@email.com" autocomplete="email">
+                                    <span class="input-error" id="err_signup_email"></span>
+                                </div>
+                            </div>
+                            <div class="form-row form-row-2">
+                                <div class="input-group">
+                                    <label for="signupPass"><i class="fas fa-lock"></i> Password</label>
+                                    <input type="password" id="signupPass" name="password" placeholder="Min 6 characters" autocomplete="new-password">
+                                    <span class="input-error" id="err_signup_password"></span>
+                                </div>
+                                <div class="input-group">
+                                    <label for="signupConfirm">Confirm</label>
+                                    <input type="password" id="signupConfirm" name="confirm_password" placeholder="Re-enter password" autocomplete="new-password">
+                                    <span class="input-error" id="err_signup_confirm_password"></span>
+                                </div>
+                            </div>
+                            <span class="input-error" id="err_signup_all" style="text-align:center;display:block;margin-bottom:10px;"></span>
+                            <button type="submit" class="btn-checkout-primary" id="signupBtn">
+                                <span>Create Account & Continue</span>
+                                <div class="btn-spinner" style="display:none;"><i class="fas fa-spinner fa-spin"></i></div>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Shipping Address -->
+                <div class="checkout-step" id="step2" style="display:none;">
+                    <div class="step-header">
+                        <div class="step-icon"><i class="fas fa-map-marker-alt"></i></div>
+                        <div>
+                            <h2>Shipping Address</h2>
+                            <p class="step-desc">Where should we deliver your order?</p>
+                        </div>
+                    </div>
+
+                    <!-- Saved Addresses -->
+                    <div class="saved-addresses" id="savedAddresses" style="display:none;">
+                        <h3 class="saved-addr-title"><i class="fas fa-bookmark"></i> Your Saved Addresses</h3>
+                        <div class="saved-addr-grid" id="savedAddrGrid"></div>
+                        <div class="saved-addr-actions" id="savedAddrActions" style="display:none;">
+                            <button type="button" class="btn-back" id="step2BackSaved"><i class="fas fa-arrow-left"></i> Back</button>
+                            <button type="button" class="btn-checkout-primary" id="useSavedAddrBtn">
+                                <span>Use This Address</span> <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+                        <div class="saved-addr-divider">
+                            <span>or</span>
+                        </div>
+                        <button type="button" class="btn-new-address" id="btnNewAddress">
+                            <i class="fas fa-plus"></i> Add New Address
+                        </button>
+                    </div>
+
+                    <!-- Address Form -->
+                    <button type="button" class="btn-back-to-saved" id="btnBackToSaved" style="display:none;">
+                        <i class="fas fa-arrow-left"></i> Back to saved addresses
+                    </button>
+                    <form class="checkout-form" id="addressForm">
+                        <div class="form-row">
+                            <div class="input-group">
+                                <label for="shipEmail"><i class="fas fa-envelope"></i> Email Address</label>
+                                <input type="email" id="shipEmail" name="email" placeholder="your@email.com" autocomplete="email">
+                                <span class="input-hint" id="shipEmailHint" style="display:none;font-size:0.78rem;color:var(--primary);margin-top:2px;"><i class="fas fa-lock" style="font-size:0.7rem;"></i> Linked to your account</span>
+                                <span class="input-error" id="err_email"></span>
+                            </div>
+                        </div>
+                        <div class="form-row form-row-2">
+                            <div class="input-group">
+                                <label for="shipName"><i class="fas fa-user"></i> Full Name</label>
+                                <input type="text" id="shipName" name="full_name" placeholder="Full name" autocomplete="name">
+                                <span class="input-error" id="err_full_name"></span>
+                            </div>
+                            <div class="input-group">
+                                <label for="shipPhone"><i class="fas fa-phone"></i> Phone</label>
+                                <input type="tel" id="shipPhone" name="phone" placeholder="+91 XXXXX XXXXX" autocomplete="tel">
+                                <span class="input-hint" id="shipPhoneHint" style="display:none;font-size:0.78rem;color:var(--primary);margin-top:2px;"><i class="fas fa-lock" style="font-size:0.7rem;"></i> Linked to your account</span>
+                                <span class="input-error" id="err_phone"></span>
+                            </div>
+                        </div>
+                        <div class="location-control-row">
+                            <button type="button" class="btn-current-location" id="useCurrentLocation">
+                                <i class="fas fa-location-crosshairs"></i>
+                                <span>Use current location</span>
+                                <i class="fas fa-spinner fa-spin location-spinner" aria-hidden="true"></i>
+                            </button>
+                            <p class="location-lookup-note">
+                                Your location is used once to look up your address with
+                                <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>.
+                            </p>
+                            <p class="location-lookup-status" id="locationLookupStatus" role="status" aria-live="polite"></p>
+                        </div>
+                        <div class="form-row">
+                            <div class="input-group">
+                                <label for="shipAddr1"><i class="fas fa-home"></i> Address Line 1</label>
+                                <input type="text" id="shipAddr1" name="address_line1" placeholder="House/Flat No., Street" autocomplete="address-line1">
+                                <span class="input-error" id="err_address_line1"></span>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="input-group">
+                                <label for="shipAddr2">Address Line 2 <small>(optional)</small></label>
+                                <input type="text" id="shipAddr2" name="address_line2" placeholder="Landmark, Area" autocomplete="address-line2">
+                            </div>
+                        </div>
+                        <div class="form-row form-row-3">
+                            <div class="input-group">
+                                <label for="shipCity"><i class="fas fa-city"></i> City</label>
+                                <input type="text" id="shipCity" name="city" placeholder="City" autocomplete="address-level2">
+                                <span class="input-error" id="err_city"></span>
+                            </div>
+                            <div class="input-group">
+                                <label for="shipState">State</label>
+                                <input type="text" id="shipState" name="state" placeholder="State" autocomplete="address-level1">
+                                <span class="input-error" id="err_state"></span>
+                            </div>
+                            <div class="input-group">
+                                <label for="shipPin">Pincode</label>
+                                <input type="text" id="shipPin" name="pincode" placeholder="6-digit" maxlength="6" autocomplete="postal-code">
+                                <span class="input-error" id="err_pincode"></span>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="saveAddress" checked>
+                                <span class="custom-check"></span>
+                                Save this address for future orders
+                            </label>
+                        </div>
+                        <div class="step-actions">
+                            <button type="button" class="btn-back" id="step2Back"><i class="fas fa-arrow-left"></i> Back</button>
+                            <button type="submit" class="btn-checkout-primary" id="step2Continue">
+                                <span>Continue to Review</span>
+                                <div class="btn-spinner" style="display:none;"><i class="fas fa-spinner fa-spin"></i></div>
+                                <i class="fas fa-arrow-right btn-arrow"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- STEP 3: Review Order -->
+                <div class="checkout-step" id="step3" style="display:none;">
+                    <div class="step-header">
+                        <div class="step-icon"><i class="fas fa-clipboard-list"></i></div>
+                        <div>
+                            <h2>Review Your Order</h2>
+                            <p class="step-desc">Confirm everything looks good</p>
+                        </div>
+                    </div>
+
+                    <div class="review-section">
+                        <div class="review-shipping-card">
+                            <div class="review-label"><i class="fas fa-truck"></i> Shipping To</div>
+                            <p class="review-name" id="reviewName"></p>
+                            <p class="review-addr" id="reviewAddr"></p>
+                            <p class="review-phone" id="reviewPhone"></p>
+                            <button class="review-edit" id="editShipping"><i class="fas fa-pen"></i> Edit</button>
+                        </div>
+                    </div>
+
+                    <div class="review-items" id="reviewItems"></div>
+
+                    <div class="step-actions">
+                        <button type="button" class="btn-back" id="step3Back"><i class="fas fa-arrow-left"></i> Back</button>
+                        <button type="button" class="btn-checkout-primary" id="step3Continue">
+                            <span>Proceed to Payment</span> <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STEP 4: Payment -->
+                <div class="checkout-step" id="step4" style="display:none;">
+                    <div class="step-header">
+                        <div class="step-icon"><i class="fas fa-credit-card"></i></div>
+                        <div>
+                            <h2>Payment</h2>
+                            <p class="step-desc">Choose your payment method</p>
+                        </div>
+                    </div>
+
+                    <div id="preorderPaymentNotice" class="checkout-preorder-notice" style="display:none;" role="status">
+                        Pre-orders require a ₹500 advance per order through Razorpay. The remaining balance is due later.
+                    </div>
+                    <div id="preorderLowTotalNotice" class="checkout-preorder-notice is-error" style="display:none;" role="alert">
+                        Pre-orders require an order total of at least ₹500. Remove or change the coupon to continue.
+                    </div>
+                    <div id="mixedCartNotice" class="checkout-preorder-notice is-error" style="display:none;" role="alert">
+                        Pre-order products must be checked out separately. Return to your bag and place separate orders.
+                        <a href="{% url 'shop' %}">Return to shop</a>
+                    </div>
+
+                    <div class="payment-methods">
+                        <label class="payment-option active" data-method="cod">
+                            <input type="radio" name="payment" value="cod" checked>
+                            <div class="payment-icon"><i class="fas fa-money-bill-wave"></i></div>
+                            <div class="payment-info">
+                                <span class="payment-title">Cash on Delivery</span>
+                                <span class="payment-desc">Pay when you receive your order</span>
+                            </div>
+                            <div class="payment-check"><i class="fas fa-check-circle"></i></div>
+                        </label>
+                        <label class="payment-option" data-method="razorpay">
+                            <input type="radio" name="payment" value="razorpay">
+                            <div class="payment-icon"><i class="fas fa-shield-alt"></i></div>
+                            <div class="payment-info">
+                                <span class="payment-title">Pay Online (Razorpay)</span>
+                                <span class="payment-desc">UPI, Cards, Net Banking, Wallets</span>
+                            </div>
+                            <div class="payment-check"><i class="fas fa-check-circle"></i></div>
+                        </label>
+                    </div>
+
+                    <div class="step-actions">
+                        <button type="button" class="btn-back" id="step4Back"><i class="fas fa-arrow-left"></i> Back</button>
+                        <button type="button" class="btn-checkout-primary btn-place-order" id="placeOrderBtn">
+                            <span>Place Order</span>
+                            <div class="btn-spinner" style="display:none;"><i class="fas fa-spinner fa-spin"></i></div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STEP 5: Confirmation (hidden until order placed) -->
+                <div class="checkout-step" id="step5" style="display:none;">
+                    <div class="order-success">
+                        <div class="success-animation">
+                            <div class="success-circle">
+                                <i class="fas fa-check"></i>
+                            </div>
+                        </div>
+                        <h2 class="success-title">Order Placed Successfully!</h2>
+                        <p class="success-order-number">Order #<span id="successOrderNum"></span></p>
+                        <p class="success-msg">Thank you for shopping with Nowhence Clothings. You'll receive a confirmation email shortly.</p>
+                        <div id="successPreorderSummary" class="success-preorder-summary" role="status" style="display:none;">
+                            <p>Advance paid: <strong id="successPreorderPaid"></strong></p>
+                            <p>Remaining amount to pay: <strong id="successPreorderBalance"></strong></p>
+                        </div>
+                        <div class="success-actions">
+                            <a href="/account/orders/" class="btn-checkout-primary"><i class="fas fa-box"></i> View Orders</a>
+                            <a href="/shop/" class="btn-back"><i class="fas fa-shopping-bag"></i> Continue Shopping</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── Right: Order Summary Sidebar ─── -->
+            <div class="checkout-sidebar" id="checkoutSidebar">
+                <div class="sidebar-card">
+                    <h3 class="sidebar-title" id="sidebarToggle"><i class="fas fa-shopping-bag"></i> Order Summary <i class="fas fa-chevron-down sidebar-toggle-icon"></i></h3>
+                    <div class="sidebar-collapsible" id="sidebarCollapsible">
+                    <div class="sidebar-items" id="sidebarItems">
+                        <div class="sidebar-empty">
+                            <i class="fas fa-shopping-bag"></i>
+                            <p>Your bag is empty</p>
+                        </div>
+                    </div>
+                    <div class="sidebar-totals">
+                        <div class="sidebar-row">
+                            <span>Subtotal</span>
+                            <span id="sidebarSubtotal">₹0</span>
+                        </div>
+                        <div class="sidebar-row">
+                            <span>Shipping</span>
+                            <span id="sidebarShipping">Free</span>
+                        </div>
+
+                        <!-- Coupon Code -->
+                        <div class="sidebar-coupon" id="couponSection">
+                            <div class="coupon-input-wrap" id="couponInputWrap">
+                                <input type="text" id="couponInput" placeholder="Coupon code" maxlength="30" autocomplete="off">
+                                <button type="button" id="couponApplyBtn" class="coupon-apply-btn">Apply</button>
+                            </div>
+                            <div class="coupon-applied" id="couponApplied" style="display:none;">
+                                <span><i class="fas fa-tag"></i> <span id="couponCodeDisplay"></span></span>
+                                <button type="button" id="couponRemoveBtn" class="coupon-remove-btn">&times;</button>
+                            </div>
+                            <p class="coupon-msg" id="couponMsg"></p>
+                        </div>
+
+                        <div class="sidebar-row coupon-discount-row" id="couponDiscountRow" style="display:none;">
+                            <span>Discount</span>
+                            <span id="couponDiscountAmount" style="color:#27ae60;">-₹0</span>
+                        </div>
+
+                        <div class="sidebar-divider"></div>
+                        <div class="sidebar-row sidebar-total-row">
+                            <span id="sidebarTotalLabel">Total</span>
+                            <span id="sidebarTotal">₹0</span>
+                        </div>
+                        <div class="sidebar-row" id="preorderDueNowRow" style="display:none;">
+                            <span>Advance due now</span>
+                            <span id="preorderDueNowAmount">₹0</span>
+                        </div>
+                        <div class="sidebar-row" id="preorderBalanceRow" style="display:none;">
+                            <span>Balance due later</span>
+                            <span id="preorderBalanceAmount">₹0</span>
+                        </div>
+                    </div>
+                    <div class="sidebar-trust">
+                        <div class="trust-item"><i class="fas fa-shield-alt"></i> Secure Payment</div>
+                        <div class="trust-item"><i class="fas fa-undo"></i> Easy Returns</div>
+                        <div class="trust-item"><i class="fas fa-truck"></i> Free Shipping ₹5,000+</div>
+                    </div>
+                    </div><!-- /sidebar-collapsible -->
+                    <!-- Mobile-only total peek -->
+                    <div class="sidebar-mobile-total" id="sidebarMobileTotal">
+                        <span id="sidebarMobileTotalLabel">Total</span>
+                        <span id="sidebarMobileAmount">₹0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        'use strict';
+        // ── State ──
+        function normalizeCartItem(item) {
+            if (!item || typeof item !== 'object') return null;
+
+            const name = String(item.name || '').trim();
+            const slug = String(item.slug || '').trim();
+            const image = String(item.image || '').trim();
+            const size = String(item.size || '').trim();
+            const color = String(item.color || '').trim();
+            const quantity = parseInt(item.quantity, 10);
+            const price = Number(item.price);
+
+            if (!name || !Number.isFinite(quantity) || quantity < 1 || !Number.isFinite(price) || price < 0) {
+                return null;
+            }
+
+            return {
+                name,
+                slug,
+                image,
+                size,
+                color,
+                quantity,
+                price,
+                preorder: item.preorder === true,
+            };
+        }
+
+        function readStoredCart() {
+            try {
+                const raw = localStorage.getItem('ambava_cart');
+                if (!raw) return [];
+                const parsed = JSON.parse(raw);
+                if (!Array.isArray(parsed)) return [];
+
+                const normalized = parsed.map(normalizeCartItem).filter(Boolean);
+                if (normalized.length !== parsed.length) {
+                    localStorage.setItem('ambava_cart', JSON.stringify(normalized));
+                }
+                return normalized;
+            } catch (err) {
+                localStorage.removeItem('ambava_cart');
+                return [];
+            }
+        }
+
+        const cart = readStoredCart();
+        const hasPreorderCart = cart.some(item => item.preorder);
+        const hasRegularCart = cart.some(item => !item.preorder);
+        const hasMixedCart = hasPreorderCart && hasRegularCart;
+        const preorderOnlyCart = hasPreorderCart && !hasRegularCart;
+        const savedAddresses = JSON.parse(document.getElementById('saved-addresses-data').textContent || '[]');
+        let isLoggedIn = JSON.parse(document.getElementById('checkout-auth-data').textContent || 'false');
+        let currentStep = 1;
+        let selectedAddressId = null;
+
+        // CSRF helper
+        function getCSRF() {
+            const cookie = document.cookie.split('; ').find(c => c.startsWith('csrftoken='));
+            return cookie ? cookie.split('=')[1] : '';
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;',
+            }[char]));
+        }
+
+        function normalizeAddressLabel(value) {
+            const label = String(value || '').toLowerCase();
+            return ['home', 'work', 'other'].includes(label) ? label : 'other';
+        }
+
+        function upsertSavedAddress(address) {
+            const normalized = {
+                ...address,
+                label: normalizeAddressLabel(address?.label),
+            };
+            const existingIdx = savedAddresses.findIndex((item) => String(item.id) === String(normalized.id));
+            if (normalized.is_default) {
+                savedAddresses.forEach((item) => { item.is_default = false; });
+            }
+            if (existingIdx >= 0) {
+                savedAddresses[existingIdx] = { ...savedAddresses[existingIdx], ...normalized };
+            } else {
+                savedAddresses.push(normalized);
+            }
+        }
+
+        // ── DOM refs ──
+        const steps = [null, gid('step1'), gid('step2'), gid('step3'), gid('step4'), gid('step5')];
+        const progressSteps = document.querySelectorAll('.progress-step');
+        const progressFills = document.querySelectorAll('.progress-line-fill');
+
+        function gid(id) { return document.getElementById(id); }
+
+        const locationButton = gid('useCurrentLocation');
+        const locationStatus = gid('locationLookupStatus');
+
+        function setLocationStatus(message, isError = false) {
+            locationStatus.textContent = message;
+            locationStatus.classList.toggle('is-error', isError);
+        }
+
+        if (locationButton) {
+            locationButton.addEventListener('click', () => {
+                if (!navigator.geolocation) {
+                    setLocationStatus('Location is not supported by this browser. Enter your address manually.', true);
+                    return;
+                }
+
+                locationButton.disabled = true;
+                locationButton.classList.add('is-loading');
+                locationButton.setAttribute('aria-busy', 'true');
+                setLocationStatus('Finding your location...');
+
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    try {
+                        const params = new URLSearchParams({
+                            format: 'jsonv2',
+                            addressdetails: '1',
+                            zoom: '18',
+                            'accept-language': 'en',
+                            lat: String(position.coords.latitude),
+                            lon: String(position.coords.longitude),
+                        });
+                        const response = await fetch(
+                            `https://nominatim.openstreetmap.org/reverse?${params}`,
+                            { headers: { Accept: 'application/json' } }
+                        );
+                        if (!response.ok) throw new Error('Address lookup failed.');
+
+                        const result = await response.json();
+                        if (!result.address) throw new Error('No address found.');
+                        const address = result.address;
+                        const road = address.road || address.residential || address.pedestrian || address.footway || '';
+                        const addressLine1 = [address.house_number, road].filter(Boolean).join(' ')
+                            || address.building || address.name || '';
+                        const city = address.city || address.town || address.village || address.municipality
+                            || address.city_district || address.county || '';
+                        const addressLine2 = [...new Set([
+                            address.neighbourhood,
+                            address.suburb,
+                            address.city_district,
+                            address.state_district,
+                        ].filter(part => part && part.toLowerCase() !== city.toLowerCase()))].join(', ');
+
+                        gid('shipAddr1').value = addressLine1;
+                        gid('shipAddr2').value = addressLine2;
+                        gid('shipCity').value = city;
+                        gid('shipState').value = address.state || address.province || '';
+                        gid('shipPin').value = address.postcode || '';
+                        ['address_line1', 'city', 'state', 'pincode'].forEach((field) => {
+                            gid(`err_${field}`).textContent = '';
+                        });
+
+                        setLocationStatus(address.postcode
+                            ? 'Location found. Review the address and add your house or flat details.'
+                            : 'Location found, but no pincode was available. Enter your pincode manually.');
+                    } catch (error) {
+                        setLocationStatus('Could not look up this location. Enter your address manually.', true);
+                    } finally {
+                        locationButton.disabled = false;
+                        locationButton.classList.remove('is-loading');
+                        locationButton.removeAttribute('aria-busy');
+                    }
+                }, (error) => {
+                    const message = error.code === 1
+                        ? 'Location permission was denied. Allow access or enter your address manually.'
+                        : 'Could not get your location. Try again or enter your address manually.';
+                    setLocationStatus(message, true);
+                    locationButton.disabled = false;
+                    locationButton.classList.remove('is-loading');
+                    locationButton.removeAttribute('aria-busy');
+                }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 300000 });
+            });
+        }
+
+        // ── Render sidebar summary ──
+        function renderSidebar() {
+            const container = gid('sidebarItems');
+            if (!cart.length) {
+                container.innerHTML = '<div class="sidebar-empty"><i class="fas fa-shopping-bag"></i><p>Your bag is empty</p></div>';
+                return;
+            }
+            container.innerHTML = cart.map(item => `
+                <div class="sidebar-item">
+                    ${item.image ? `<img src="${item.image}" alt="${item.name}" class="sidebar-item-img">` : '<div class="sidebar-item-img-ph"><i class="fas fa-image"></i></div>'}
+                    <div class="sidebar-item-info">
+                        <p class="sidebar-item-name">${item.name}</p>
+                        ${item.size ? `<p class="sidebar-item-size">Size: ${escapeHtml(item.size)}</p>` : ''}
+                        ${item.color ? `<p class="sidebar-item-size">Color: ${escapeHtml(item.color)}</p>` : ''}
+                        <p class="sidebar-item-qty">Qty: ${item.quantity}</p>
+                    </div>
+                    <p class="sidebar-item-price">₹${(item.price * item.quantity).toLocaleString('en-IN')}</p>
+                </div>
+            `).join('');
+
+            const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+            const shipping = subtotal >= 5000 ? 0 : 199;
+            const couponDiscount = window._couponDiscount || 0;
+            const total = Math.max(0, subtotal + shipping - couponDiscount);
+            gid('sidebarSubtotal').textContent = `₹${subtotal.toLocaleString('en-IN')}`;
+            gid('sidebarShipping').textContent = shipping === 0 ? 'Free' : `₹${shipping}`;
+            gid('sidebarTotal').textContent = `₹${total.toLocaleString('en-IN')}`;
+            const advance = 500;
+            gid('preorderDueNowAmount').textContent = `₹${advance.toLocaleString('en-IN')}`;
+            gid('preorderBalanceAmount').textContent = `₹${Math.max(0, total - advance).toLocaleString('en-IN')}`;
+            if (preorderOnlyCart) {
+                gid('preorderLowTotalNotice').style.display = total < advance ? '' : 'none';
+                gid('placeOrderBtn').disabled = hasMixedCart || total < advance;
+            }
+            const mobileAmt = gid('sidebarMobileAmount');
+            if (mobileAmt) mobileAmt.textContent = `₹${preorderOnlyCart ? advance : total.toLocaleString('en-IN')}`;
+        }
+        renderSidebar();
+
+        if (preorderOnlyCart) {
+            gid('preorderPaymentNotice').style.display = '';
+            gid('preorderDueNowRow').style.display = '';
+            gid('preorderBalanceRow').style.display = '';
+            gid('sidebarTotalLabel').textContent = 'Order total';
+            gid('sidebarMobileTotalLabel').textContent = 'Due now';
+            const codOption = document.querySelector('.payment-option[data-method="cod"]');
+            const onlineOption = document.querySelector('.payment-option[data-method="razorpay"]');
+            codOption.style.display = 'none';
+            onlineOption.classList.add('active');
+            onlineOption.querySelector('input').checked = true;
+            onlineOption.querySelector('.payment-desc').textContent = 'Pay the ₹500 advance now; balance due later';
+            gid('placeOrderBtn').querySelector('span').textContent = 'Pay Advance & Place Pre-order';
+        } else if (hasMixedCart) {
+            gid('mixedCartNotice').style.display = '';
+            gid('placeOrderBtn').disabled = true;
+        }
+
+        // ── Coupon code handling ──
+        window._couponDiscount = 0;
+        window._couponCode = '';
+        const couponApplyBtn = gid('couponApplyBtn');
+        const couponRemoveBtn = gid('couponRemoveBtn');
+        const couponInput = gid('couponInput');
+        const couponMsg = gid('couponMsg');
+        const couponApplied = gid('couponApplied');
+        const couponInputWrap = gid('couponInputWrap');
+        const couponDiscountRow = gid('couponDiscountRow');
+        const couponDiscountAmount = gid('couponDiscountAmount');
+        const couponCodeDisplay = gid('couponCodeDisplay');
+
+        if (couponApplyBtn) {
+            couponApplyBtn.addEventListener('click', function() {
+                const code = couponInput.value.trim().toUpperCase();
+                if (!code) {
+                    couponMsg.textContent = 'Please enter a coupon code.';
+                    couponMsg.style.color = '#e74c3c';
+                    couponInput.focus();
+                    return;
+                }
+                couponInput.value = code;
+                const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+                this.disabled = true;
+                this.textContent = '...';
+                couponMsg.textContent = '';
+
+                fetch('/api/coupon/apply/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRF(),
+                    },
+                    body: JSON.stringify({ code: code, order_total: subtotal }),
+                })
+                .then(r => r.json())
+                .then(data => {
+                    couponApplyBtn.disabled = false;
+                    couponApplyBtn.textContent = 'Apply';
+                    if (data.ok) {
+                        window._couponDiscount = data.discount;
+                        window._couponCode = code;
+                        couponCodeDisplay.textContent = code;
+                        couponInputWrap.style.display = 'none';
+                        couponApplied.style.display = 'flex';
+                        couponDiscountRow.style.display = '';
+                        couponDiscountAmount.textContent = `-₹${data.discount.toLocaleString('en-IN')}`;
+                        couponMsg.textContent = data.message || 'Coupon applied!';
+                        couponMsg.style.color = '#27ae60';
+                        renderSidebar();
+                    } else {
+                        couponMsg.textContent = data.error || 'Invalid coupon.';
+                        couponMsg.style.color = '#e74c3c';
+                    }
+                })
+                .catch(() => {
+                    couponApplyBtn.disabled = false;
+                    couponApplyBtn.textContent = 'Apply';
+                    couponMsg.textContent = 'Network error.';
+                    couponMsg.style.color = '#e74c3c';
+                });
+            });
+        }
+
+        if (couponInput && couponApplyBtn) {
+            couponInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    couponApplyBtn.click();
+                }
+            });
+        }
+
+        if (couponRemoveBtn) {
+            couponRemoveBtn.addEventListener('click', function() {
+                window._couponDiscount = 0;
+                window._couponCode = '';
+                couponInputWrap.style.display = '';
+                couponApplied.style.display = 'none';
+                couponDiscountRow.style.display = 'none';
+                couponInput.value = '';
+                couponMsg.textContent = '';
+                renderSidebar();
+            });
+        }
+
+        // ── Mobile sidebar toggle ──
+        const sidebarToggle = gid('sidebarToggle');
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', () => {
+                sidebarToggle.closest('.sidebar-card').classList.toggle('expanded');
+            });
+        }
+
+        function getShippingFields() {
+            return {
+                email: gid('shipEmail').value.trim(),
+                full_name: gid('shipName').value.trim(),
+                phone: gid('shipPhone').value.trim(),
+                address_line1: gid('shipAddr1').value.trim(),
+                address_line2: gid('shipAddr2').value.trim(),
+                city: gid('shipCity').value.trim(),
+                state: gid('shipState').value.trim(),
+                pincode: gid('shipPin').value.trim(),
+            };
+        }
+
+        function normalizePhoneDigits(raw) {
+            let digits = raw.replace(/[^\d]/g, '');
+            if (digits.startsWith('91') && digits.length === 12) digits = digits.slice(2);
+            if (digits.startsWith('0')) digits = digits.slice(1);
+            return digits;
+        }
+
+        function validateShippingFields(fields, showInlineErrors = false) {
+            const errors = {};
+
+            if (!fields.email) errors.email = 'Email is required.';
+            if (!fields.full_name) errors.full_name = 'Full name is required.';
+            if (!fields.phone) {
+                errors.phone = 'Phone is required.';
+            } else if (normalizePhoneDigits(fields.phone).length !== 10) {
+                errors.phone = 'Enter a valid 10-digit phone number.';
+            }
+            if (!fields.address_line1) errors.address_line1 = 'Address is required.';
+            if (!fields.city) errors.city = 'City is required.';
+            if (!fields.state) errors.state = 'State is required.';
+            if (!fields.pincode || fields.pincode.length < 5) {
+                errors.pincode = 'Valid pincode required.';
+            }
+
+            if (showInlineErrors) {
+                Object.entries(errors).forEach(([key, message]) => {
+                    const el = gid(`err_${key}`);
+                    if (el) el.textContent = message;
+                });
+            }
+
+            return errors;
+        }
+
+        function showAddressFormForCorrections() {
+            gid('savedAddresses').style.display = 'none';
+            gid('addressForm').style.display = '';
+            gid('btnBackToSaved').style.display = savedAddresses.length ? '' : 'none';
+        }
+
+        function focusFirstShippingError(errors) {
+            const inputMap = {
+                email: 'shipEmail',
+                full_name: 'shipName',
+                phone: 'shipPhone',
+                address_line1: 'shipAddr1',
+                city: 'shipCity',
+                state: 'shipState',
+                pincode: 'shipPin',
+            };
+            const firstKey = Object.keys(errors)[0];
+            const target = firstKey ? gid(inputMap[firstKey]) : null;
+            if (target) {
+                target.focus();
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function renderReviewShipping(fields) {
+            gid('reviewName').textContent = fields.full_name;
+            gid('reviewAddr').textContent = `${fields.address_line1}, ${fields.address_line2 ? fields.address_line2 + ', ' : ''}${fields.city}, ${fields.state} — ${fields.pincode}`;
+            gid('reviewPhone').innerHTML = `<i class="fas fa-phone"></i> ${fields.phone}`;
+        }
+
+        // ── Step navigation ──
+        function goToStep(n) {
+            // Hide all
+            steps.forEach((s, i) => { if (s) s.style.display = 'none'; });
+            // Show target
+            if (steps[n]) {
+                steps[n].style.display = '';
+                steps[n].style.animation = 'checkoutSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+            }
+            // Update progress bar
+            progressSteps.forEach((ps, i) => {
+                const sn = parseInt(ps.dataset.step);
+                ps.classList.toggle('active', sn <= n);
+                ps.classList.toggle('completed', sn < n);
+            });
+            progressFills.forEach((pf, i) => {
+                pf.style.width = (i + 1) < n ? '100%' : '0%';
+            });
+            currentStep = n;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ── Lock email/phone and pre-fill shipping from profile ──
+        function lockAccountFields(userData) {
+            // Email: lock if user has email
+            const emailEl = gid('shipEmail');
+            const phoneEl = gid('shipPhone');
+            if (userData.email) {
+                emailEl.value = userData.email;
+                emailEl.readOnly = true;
+                emailEl.style.opacity = '0.7';
+                emailEl.style.cursor = 'not-allowed';
+                gid('shipEmailHint').style.display = '';
+            }
+            // Phone: lock if user has phone
+            if (userData.phone) {
+                phoneEl.value = userData.phone;
+                phoneEl.readOnly = true;
+                phoneEl.style.opacity = '0.7';
+                phoneEl.style.cursor = 'not-allowed';
+                gid('shipPhoneHint').style.display = '';
+            }
+            // Pre-fill name if user has one
+            const nameEl = gid('shipName');
+            const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
+            if (fullName && !nameEl.value.trim()) {
+                nameEl.value = fullName;
+            }
+        }
+
+        // ── Step 1: Account ──
+        if (isLoggedIn) {
+            const initialUser = {
+                first_name: '{{ request.user.first_name|escapejs }}',
+                last_name: '{{ request.user.last_name|escapejs }}',
+                email: '{{ request.user.email|escapejs }}',
+                phone: '{{ user_phone|escapejs }}',
+            };
+            gid('loginCard').style.display = 'none';
+            gid('loggedInCard').style.display = '';
+            gid('loggedInName').textContent = `${initialUser.first_name} ${initialUser.last_name}`.trim() || '{{ request.user.username|escapejs }}';
+            gid('loggedInEmail').textContent = initialUser.email || 'No email set';
+            lockAccountFields(initialUser);
+        }
+
+        gid('step1Continue')?.addEventListener('click', () => {
+            goToStep(2);
+            // Show saved addresses view if available, else show form
+            if (savedAddresses.length) {
+                gid('savedAddresses').style.display = '';
+                gid('addressForm').style.display = 'none';
+                gid('btnBackToSaved').style.display = 'none';
+                renderSavedAddresses();
+            } else {
+                gid('savedAddresses').style.display = 'none';
+                gid('addressForm').style.display = '';
+            }
+        });
+
+        // Tabs
+        document.querySelectorAll('.checkout-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.checkout-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const target = tab.dataset.tab;
+                gid('loginForm').style.display = target === 'login' ? '' : 'none';
+                gid('signupForm').style.display = target === 'signup' ? '' : 'none';
+            });
+        });
+
+        // Login submit
+        gid('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearErrors('login');
+            const btn = gid('loginBtn');
+            btn.querySelector('span').style.display = 'none';
+            btn.querySelector('.btn-spinner').style.display = '';
+
+            const fd = new FormData();
+            fd.append('action', 'login');
+            fd.append('username', gid('loginUser').value);
+            fd.append('password', gid('loginPass').value);
+
+            try {
+                const r = await fetch('/checkout/login/', {
+                    method: 'POST',
+                    body: fd,
+                    credentials: 'same-origin',
+                    headers: { 'X-CSRFToken': getCSRF() },
+                });
+                const d = await r.json();
+                if (d.ok) {
+                    isLoggedIn = true;
+                    savedAddresses.length = 0;
+                    (d.addresses || []).forEach(upsertSavedAddress);
+                    gid('loginCard').style.display = 'none';
+                    gid('loggedInCard').style.display = '';
+                    gid('loggedInName').textContent = `${d.user.first_name} ${d.user.last_name}`.trim() || d.user.username;
+                    gid('loggedInEmail').textContent = d.user.email || 'No email set';
+                    lockAccountFields(d.user);
+                    gid('loggedInCard').style.animation = 'checkoutSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+                } else {
+                    showErrors(d.errors, 'login');
+                }
+            } catch (err) {
+                gid('err_login_all').textContent = 'Network error. Please try again.';
+            }
+            btn.querySelector('span').style.display = '';
+            btn.querySelector('.btn-spinner').style.display = 'none';
+        });
+
+        // Signup submit
+        gid('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearErrors('signup');
+            const btn = gid('signupBtn');
+            btn.querySelector('span').style.display = 'none';
+            btn.querySelector('.btn-spinner').style.display = '';
+
+            const fd = new FormData();
+            fd.append('action', 'signup');
+            fd.append('first_name', gid('signupFirst').value);
+            fd.append('last_name', gid('signupLast').value);
+            fd.append('username', gid('signupUser').value);
+            fd.append('email', gid('signupEmail').value);
+            fd.append('password', gid('signupPass').value);
+            fd.append('confirm_password', gid('signupConfirm').value);
+
+            try {
+                const r = await fetch('/checkout/login/', {
+                    method: 'POST',
+                    body: fd,
+                    credentials: 'same-origin',
+                    headers: { 'X-CSRFToken': getCSRF() },
+                });
+                const d = await r.json();
+                if (d.ok) {
+                    isLoggedIn = true;
+                    gid('loginCard').style.display = 'none';
+                    gid('loggedInCard').style.display = '';
+                    gid('loggedInName').textContent = `${d.user.first_name} ${d.user.last_name}`.trim() || d.user.username;
+                    gid('loggedInEmail').textContent = d.user.email || 'No email set';
+                    lockAccountFields(d.user);
+                    gid('loggedInCard').style.animation = 'checkoutSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+                } else {
+                    showErrors(d.errors, 'signup');
+                }
+            } catch (err) {
+                gid('err_signup_all').textContent = 'Network error. Please try again.';
+            }
+            btn.querySelector('span').style.display = '';
+            btn.querySelector('.btn-spinner').style.display = 'none';
+        });
+
+        // ── Step 2: Shipping ──
+        function renderSavedAddresses() {
+            const grid = gid('savedAddrGrid');
+            const wrap = gid('savedAddresses');
+            const form = gid('addressForm');
+            const actionsBar = gid('savedAddrActions');
+            if (!savedAddresses.length) {
+                wrap.style.display = 'none';
+                form.style.display = '';
+                return;
+            }
+            wrap.style.display = '';
+            form.style.display = 'none'; // hide form when saved addresses exist
+            actionsBar.style.display = 'none';
+            selectedAddressId = null;
+
+            grid.innerHTML = savedAddresses.map((a, i) => {
+                const label = normalizeAddressLabel(a.label);
+                const labelText = label.charAt(0).toUpperCase() + label.slice(1);
+                return `
+                <div class="saved-addr-card ${a.is_default ? 'default' : ''}" data-idx="${i}" style="animation-delay: ${i * 0.08}s">
+                    <div class="addr-label-badge">${labelText}</div>
+                    <p class="addr-name">${escapeHtml(a.full_name)}</p>
+                    <p class="addr-detail">${escapeHtml(a.address_line1)}${a.address_line2 ? ', ' + escapeHtml(a.address_line2) : ''}</p>
+                    <p class="addr-detail">${escapeHtml(a.city)}, ${escapeHtml(a.state)} — ${escapeHtml(a.pincode)}</p>
+                    ${a.phone ? `<p class="addr-phone"><i class="fas fa-phone"></i> ${escapeHtml(a.phone)}</p>` : ''}
+                    ${a.is_default ? '<span class="addr-default-badge"><i class="fas fa-star"></i> Default</span>' : ''}
+                </div>
+            `;
+            }).join('');
+
+            grid.querySelectorAll('.saved-addr-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    grid.querySelectorAll('.saved-addr-card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    const idx = parseInt(card.dataset.idx);
+                    const a = savedAddresses[idx];
+                    selectedAddressId = a.id;
+                    // Pre-fill hidden form fields for order placement
+                    gid('shipName').value = a.full_name;
+                    if (!gid('shipPhone').readOnly) gid('shipPhone').value = a.phone || '';
+                    gid('shipAddr1').value = a.address_line1;
+                    gid('shipAddr2').value = a.address_line2 || '';
+                    gid('shipCity').value = a.city;
+                    gid('shipState').value = a.state;
+                    gid('shipPin').value = a.pincode;
+                    // Show "Use This Address" button
+                    actionsBar.style.display = '';
+                    actionsBar.style.animation = 'checkoutSlideIn 0.3s ease forwards';
+                });
+            });
+        }
+
+        // "Use This Address" — go directly to review
+        gid('useSavedAddrBtn')?.addEventListener('click', () => {
+            if (!selectedAddressId) return;
+            clearErrors('');
+            const fields = getShippingFields();
+            const errors = validateShippingFields(fields, true);
+            if (Object.keys(errors).length) {
+                showAddressFormForCorrections();
+                focusFirstShippingError(errors);
+                return;
+            }
+            renderReviewShipping(fields);
+            renderReviewItems();
+            goToStep(3);
+        });
+
+        gid('step2BackSaved')?.addEventListener('click', () => goToStep(1));
+
+        // "Add New Address" — show the form, hide address cards
+        gid('btnNewAddress')?.addEventListener('click', () => {
+            gid('savedAddresses').style.display = 'none';
+            gid('addressForm').style.display = '';
+            gid('addressForm').style.animation = 'checkoutSlideIn 0.4s ease forwards';
+            gid('btnBackToSaved').style.display = '';
+            selectedAddressId = null;
+            // Clear all fields except locked ones
+            ['shipName','shipAddr1','shipAddr2','shipCity','shipState','shipPin'].forEach(id => gid(id).value = '');
+            if (!gid('shipPhone').readOnly) gid('shipPhone').value = '';
+            gid('shipName').focus();
+        });
+
+        // "Back to saved addresses" in new address form
+        gid('btnBackToSaved')?.addEventListener('click', () => {
+            gid('addressForm').style.display = 'none';
+            gid('btnBackToSaved').style.display = 'none';
+            gid('savedAddresses').style.display = '';
+            renderSavedAddresses();
+        });
+
+        gid('step2Back').addEventListener('click', () => {
+            // If there are saved addresses and we're in the form, go back to saved list
+            if (savedAddresses.length && gid('addressForm').style.display !== 'none') {
+                gid('addressForm').style.display = 'none';
+                gid('btnBackToSaved').style.display = 'none';
+                gid('savedAddresses').style.display = '';
+                renderSavedAddresses();
+            } else {
+                goToStep(1);
+            }
+        });
+
+        gid('addressForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearErrors('');
+            const fields = getShippingFields();
+            const errors = validateShippingFields(fields, true);
+            if (Object.keys(errors).length) {
+                focusFirstShippingError(errors);
+                return;
+            }
+
+            const btn = gid('step2Continue');
+            const btnSpinner = btn.querySelector('.btn-spinner');
+            const btnText = btn.querySelector('span');
+            const btnArrow = btn.querySelector('.btn-arrow');
+
+            // Save address immediately if checkbox is checked
+            if (isLoggedIn && gid('saveAddress').checked) {
+                btnText.style.display = 'none';
+                if (btnArrow) btnArrow.style.display = 'none';
+                btnSpinner.style.display = '';
+                btn.disabled = true;
+
+                try {
+                    const selectedAddress = savedAddresses.find(a => String(a.id) === String(selectedAddressId));
+                    const fd = new FormData();
+                    if (selectedAddressId) fd.append('address_id', selectedAddressId);
+                    fd.append('full_name', fields.full_name);
+                    fd.append('phone', fields.phone);
+                    fd.append('address_line1', fields.address_line1);
+                    fd.append('address_line2', gid('shipAddr2').value.trim());
+                    fd.append('city', fields.city);
+                    fd.append('state', fields.state);
+                    fd.append('pincode', fields.pincode);
+                    fd.append('label', selectedAddress?.label || 'home');
+                    if (!savedAddresses.length) fd.append('is_default', 'on');
+
+                    const r = await fetch('/account/address/save/', {
+                        method: 'POST',
+                        body: fd,
+                        credentials: 'same-origin',
+                        headers: { 'X-CSRFToken': getCSRF(), 'X-Requested-With': 'XMLHttpRequest' },
+                    });
+                    const d = await r.json();
+                    if (d.ok && d.address) {
+                        upsertSavedAddress(d.address);
+                        selectedAddressId = String(d.address.id);
+                    }
+                } catch (err) {
+                    // Fail silently — address will still be saved at order placement as fallback
+                }
+                btnText.style.display = '';
+                if (btnArrow) btnArrow.style.display = '';
+                btnSpinner.style.display = 'none';
+                btn.disabled = false;
+            }
+
+            // Save name to profile (async, don't block navigation)
+            if (isLoggedIn) {
+                try {
+                    const r = await fetch('/checkout/update-profile/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRF() },
+                        body: JSON.stringify({ full_name: fields.full_name }),
+                    });
+                    const d = await r.json();
+                    if (d.ok && d.user) {
+                        const updatedName = `${d.user.first_name} ${d.user.last_name}`.trim();
+                        gid('loggedInName').textContent = updatedName || gid('loggedInName').textContent;
+                    }
+                } catch (err) { /* fail silently */ }
+            }
+
+            // Render review
+            renderReviewShipping(fields);
+            renderReviewItems();
+            goToStep(3);
+        });
+
+        // ── Step 3: Review ──
+        function renderReviewItems() {
+            const container = gid('reviewItems');
+            container.innerHTML = cart.map((item, i) => `
+                <div class="review-item" style="animation-delay: ${i * 0.08}s">
+                    ${item.image ? `<img src="${item.image}" alt="${item.name}" class="review-item-img">` : '<div class="review-item-img-ph"><i class="fas fa-image"></i></div>'}
+                    <div class="review-item-info">
+                        <p class="review-item-name">${item.name}</p>
+                        ${item.size ? `<p class="review-item-size">Size: ${escapeHtml(item.size)}</p>` : ''}
+                        ${item.color ? `<p class="review-item-size">Color: ${escapeHtml(item.color)}</p>` : ''}
+                        <p class="review-item-qty">Qty: ${item.quantity}</p>
+                    </div>
+                    <p class="review-item-price">₹${(item.price * item.quantity).toLocaleString('en-IN')}</p>
+                </div>
+            `).join('');
+        }
+
+        gid('step3Back').addEventListener('click', () => {
+            // Show saved addresses or form depending on context
+            if (savedAddresses.length && selectedAddressId) {
+                // Came from a saved address — show saved list
+                gid('savedAddresses').style.display = '';
+                gid('addressForm').style.display = 'none';
+                gid('btnBackToSaved').style.display = 'none';
+                renderSavedAddresses();
+            } else if (savedAddresses.length) {
+                // Has saved addresses but was adding new — show form
+                gid('savedAddresses').style.display = 'none';
+                gid('addressForm').style.display = '';
+                gid('btnBackToSaved').style.display = '';
+            }
+            goToStep(2);
+        });
+        gid('editShipping').addEventListener('click', () => {
+            // When editing, show the address form pre-filled (not the saved list)
+            if (savedAddresses.length) {
+                gid('savedAddresses').style.display = 'none';
+                gid('addressForm').style.display = '';
+                gid('btnBackToSaved').style.display = '';
+            }
+            goToStep(2);
+        });
+        gid('step3Continue').addEventListener('click', () => goToStep(4));
+
+        // ── Step 4: Payment ──
+        document.querySelectorAll('.payment-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                if (opt.style.display === 'none') return;
+                document.querySelectorAll('.payment-option').forEach(o => o.classList.remove('active'));
+                opt.classList.add('active');
+                opt.querySelector('input').checked = true;
+            });
+        });
+
+        gid('step4Back').addEventListener('click', () => goToStep(3));
+
+        function resetPlaceOrderButton(btn, label = 'Place Order') {
+            btn.querySelector('span').textContent = label;
+            btn.querySelector('span').style.display = '';
+            btn.querySelector('.btn-spinner').style.display = 'none';
+            btn.disabled = false;
+        }
+
+        async function reportPaymentFailure(orderNumber, errorDescription) {
+            if (!orderNumber) return;
+            try {
+                await fetch('/checkout/payment-failed/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRF() },
+                    body: JSON.stringify({
+                        order_number: orderNumber,
+                        error_description: errorDescription || 'Payment failed',
+                    }),
+                });
+            } catch (err) {
+                // Keep the user flow moving even if failure reporting itself fails.
+            }
+        }
+
+        function showOrderSuccess(orderNumber, orderDetails = {}) {
+            localStorage.removeItem('ambava_cart');
+            gid('successOrderNum').textContent = orderNumber;
+            const preorderSummary = gid('successPreorderSummary');
+            if (orderDetails.is_preorder) {
+                gid('successPreorderPaid').textContent = `₹${Number(orderDetails.amount_paid || 0).toLocaleString('en-IN')}`;
+                gid('successPreorderBalance').textContent = `₹${Number(orderDetails.balance_due || 0).toLocaleString('en-IN')}`;
+                preorderSummary.style.display = '';
+            } else {
+                preorderSummary.style.display = 'none';
+            }
+            gid('checkoutSidebar').style.display = 'none';
+            document.querySelector('.checkout-progress').style.display = 'none';
+            goToStep(5);
+        }
+
+        gid('placeOrderBtn').addEventListener('click', async () => {
+            if (!isLoggedIn) { goToStep(1); return; }
+            if (hasMixedCart) {
+                alert('Pre-order products must be checked out separately from regular products.');
+                return;
+            }
+
+            clearErrors('');
+            const shippingFields = getShippingFields();
+            const shippingErrors = validateShippingFields(shippingFields, true);
+            if (Object.keys(shippingErrors).length) {
+                showAddressFormForCorrections();
+                goToStep(2);
+                focusFirstShippingError(shippingErrors);
+                return;
+            }
+
+            const btn = gid('placeOrderBtn');
+            btn.querySelector('span').style.display = 'none';
+            btn.querySelector('.btn-spinner').style.display = '';
+            btn.disabled = true;
+
+            const selectedPayment = document.querySelector('input[name="payment"]:checked').value;
+            const shouldSaveAddress = isLoggedIn && gid('saveAddress').checked;
+
+            const payload = {
+                items: cart.map(i => ({ name: i.name, slug: i.slug || '', price: i.price, quantity: i.quantity, image: i.image || '', size: i.size || '', color: i.color || '' })),
+                email: shippingFields.email,
+                save_address: shouldSaveAddress,
+                address_id: shouldSaveAddress && selectedAddressId ? String(selectedAddressId) : '',
+                payment_method: selectedPayment,
+                coupon_code: window._couponCode || '',
+                discount_amount: window._couponDiscount || 0,
+                shipping: {
+                    full_name: shippingFields.full_name,
+                    phone: shippingFields.phone,
+                    address_line1: shippingFields.address_line1,
+                    address_line2: shippingFields.address_line2,
+                    city: shippingFields.city,
+                    state: shippingFields.state,
+                    pincode: shippingFields.pincode,
+                },
+            };
+
+            try {
+                const r = await fetch('/checkout/place-order/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRF() },
+                    body: JSON.stringify(payload),
+                });
+                const d = await r.json();
+                if (d.ok) {
+                    if (d.payment_method === 'razorpay' && d.razorpay) {
+                        let paymentHandled = false;
+
+                        if (typeof Razorpay === 'undefined') {
+                            await reportPaymentFailure(d.order_number, 'Payment gateway failed to load');
+                            resetPlaceOrderButton(btn);
+                            alert('The payment gateway did not load. Please refresh and try again.');
+                            return;
+                        }
+
+                        // ── Open Razorpay Checkout ──
+                        const rzpOptions = {
+                            key: d.razorpay.key_id,
+                            amount: d.razorpay.amount,
+                            currency: d.razorpay.currency,
+                            name: d.razorpay.name,
+                            description: d.razorpay.description,
+                            order_id: d.razorpay.order_id,
+                            prefill: d.razorpay.prefill,
+                            theme: { color: '#C4A57B' },
+                            modal: {
+                                ondismiss: async function() {
+                                    if (paymentHandled) return;
+                                    paymentHandled = true;
+                                    await reportPaymentFailure(d.order_number, 'Payment popup closed by user');
+                                    resetPlaceOrderButton(btn);
+                                    alert('Payment was cancelled. You can try again.');
+                                },
+                            },
+                            handler: async function(response) {
+                                if (paymentHandled) return;
+                                paymentHandled = true;
+                                btn.querySelector('span').textContent = 'Verifying...';
+                                btn.querySelector('span').style.display = '';
+                                try {
+                                    const vr = await fetch('/checkout/verify-payment/', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRF() },
+                                        body: JSON.stringify({
+                                            razorpay_order_id: response.razorpay_order_id,
+                                            razorpay_payment_id: response.razorpay_payment_id,
+                                            razorpay_signature: response.razorpay_signature,
+                                            order_number: d.order_number,
+                                        }),
+                                    });
+                                    const vd = await vr.json();
+                                    if (vd.ok) {
+                                        showOrderSuccess(vd.order_number, vd);
+                                    } else {
+                                        alert(vd.error || 'Payment verification failed. Please contact support.');
+                                    }
+                                } catch (err) {
+                                    alert('Verification error. Please contact support with your order number: ' + d.order_number);
+                                }
+                                resetPlaceOrderButton(btn);
+                            },
+                        };
+
+                        const rzp = new Razorpay(rzpOptions);
+                        rzp.on('payment.failed', async function(response) {
+                            if (paymentHandled) return;
+                            paymentHandled = true;
+                            const description = response?.error?.description || 'Unknown error';
+                            await reportPaymentFailure(d.order_number, description);
+                            alert('Payment failed: ' + description + '. Please try again.');
+                            resetPlaceOrderButton(btn);
+                        });
+                        try {
+                            rzp.open();
+                        } catch (err) {
+                            if (!paymentHandled) {
+                                paymentHandled = true;
+                                await reportPaymentFailure(d.order_number, 'Unable to open payment window');
+                            }
+                            resetPlaceOrderButton(btn);
+                            alert('Unable to open the payment window. Please try again.');
+                        }
+                        return;
+                    } else {
+                        // COD — order placed directly
+                        showOrderSuccess(d.order_number, d);
+                        return;
+                    }
+                } else {
+                    alert(d.error || Object.values(d.errors || {}).join('\n') || 'Something went wrong.');
+                }
+            } catch (err) {
+                alert('Network error. Please try again.');
+            }
+            resetPlaceOrderButton(btn);
+        });
+
+        // ── Error helpers ──
+        function clearErrors(prefix) {
+            document.querySelectorAll('.input-error').forEach(el => el.textContent = '');
+        }
+        function showErrors(errors, prefix) {
+            if (!errors) return;
+            Object.entries(errors).forEach(([key, msg]) => {
+                const el = document.getElementById(`err_${prefix}_${key}`) || document.getElementById(`err_${prefix}_all`);
+                if (el) el.textContent = msg;
+            });
+        }
+
+        // ── Redirect if cart empty ──
+        if (!cart.length) {
+            document.querySelector('.checkout-main').innerHTML = `
+                <div class="order-success" style="padding-top:60px;">
+                    <div class="success-animation">
+                        <div class="success-circle" style="background:rgba(196,165,123,0.1);"><i class="fas fa-shopping-bag" style="color:var(--primary);"></i></div>
+                    </div>
+                    <h2 class="success-title">Your bag is empty</h2>
+                    <p class="success-msg">Add a T-shirt you love to your bag first.</p>
+                    <div class="success-actions">
+                        <a href="/shop/" class="btn-checkout-primary"><i class="fas fa-shopping-bag"></i> Browse Shop</a>
+                        <a href="/" class="btn-back"><i class="fas fa-home"></i> Go Home</a>
+                    </div>
+                </div>`;
+            document.querySelector('.checkout-progress').style.display = 'none';
+            gid('checkoutSidebar').style.display = 'none';
+        }
+    })();
+    </script>
+
+    <script src="{% static 'js/main.js' %}?v=20"></script>
+
+    <style>
+    .sidebar-coupon { padding: 12px 0; border-top: 1px dashed var(--border, #eee); }
+    .checkout-preorder-notice { margin: 0 0 18px; padding: 14px 16px; border-radius: 10px; background: rgba(196,165,123,0.12); color: var(--text, #333); line-height: 1.5; }
+    .checkout-preorder-notice.is-error { background: rgba(231,76,60,0.1); color: #a93226; }
+    .checkout-preorder-notice a { display: inline-block; margin-left: 4px; color: inherit; font-weight: 700; text-decoration: underline; }
+    .success-preorder-summary { margin: 20px auto; padding: 14px 18px; max-width: 420px; border-radius: 10px; background: rgba(196,165,123,0.12); color: var(--text, #333); }
+    .success-preorder-summary p { margin: 4px 0; }
+    .coupon-input-wrap { display: flex; gap: 8px; }
+    .coupon-input-wrap input { flex: 1; padding: 8px 12px; border: 1px solid var(--border, #ddd); border-radius: 8px; font-size: 0.88rem; background: var(--bg, #fff); color: var(--text, #333); text-transform: uppercase; }
+    .coupon-input-wrap input:focus { outline: none; border-color: var(--primary, #b8860b); }
+    .coupon-apply-btn { padding: 8px 16px; background: var(--primary, #b8860b); color: #fff; border: none; border-radius: 8px; font-size: 0.85rem; cursor: pointer; transition: filter 0.2s; white-space: nowrap; }
+    .coupon-apply-btn:hover { filter: brightness(1.1); }
+    .coupon-applied { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(39,174,96,0.08); border-radius: 8px; font-size: 0.88rem; color: #27ae60; }
+    .coupon-remove-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #e74c3c; padding: 0 4px; }
+    .coupon-msg { font-size: 0.78rem; margin-top: 6px; min-height: 16px; }
+    .coupon-discount-row span { font-weight: 600; }
+    .sidebar-item-size, .review-item-size { margin: 2px 0 0; font-size: 0.82rem; color: var(--text-light, #7a7a7a); }
+    </style>
+</body>
+</html>

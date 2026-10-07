@@ -1,0 +1,32 @@
+Hi {{ customer_name }},
+
+Thanks for your order. Your order details are below.
+
+ORDER
+Number: #{{ order_number }}
+Placed: {{ order_date }}
+Status: {{ status }}
+Payment method: {{ payment_method }}
+Payment status: {{ payment_status }}
+
+ITEMS
+{% for item in items %}- {{ item.name }}{% if item.options %} ({{ item.options }}){% endif %}
+  Quantity: {{ item.quantity }} × {{ item.unit_price }} = {{ item.total }}
+{% endfor %}
+Subtotal: {{ subtotal }}
+{% if discount_amount != "₹0.00" %}Discount{% if coupon_code %} ({{ coupon_code }}){% endif %}: -{{ discount_amount }}
+{% endif %}Shipping: {{ shipping_charge }}
+Total: {{ total }}
+{% if is_preorder %}Advance paid: {{ amount_paid }}
+Balance due later: {{ balance_due }}
+{% endif %}
+
+DELIVERING TO
+{{ shipping_name }}
+{{ shipping_phone }}
+{{ shipping_address }}
+{{ shipping_city }}, {{ shipping_state }} {{ shipping_pincode }}
+
+Track your order: {{ tracking_url }}
+
+Thank you for shopping with Nowhence Clothings.
